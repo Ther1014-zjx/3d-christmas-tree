@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>3D 圣诞树 · Merry Christmas</title>
+<title>3D 圣诞树 · 点一下</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #04060d; }
-  canvas { display: block; }
+  canvas { display: block; touch-action: none; }
 
   #title {
-    position: fixed; left: 50%; top: 7%; transform: translateX(-50%);
+    position: fixed; left: 50%; top: 6.5%; transform: translateX(-50%);
     color: #ffffff; white-space: nowrap;
     font: 300 26px/1.4 "Segoe UI", "Microsoft YaHei", -apple-system, sans-serif;
     letter-spacing: .38em; user-select: none; pointer-events: none;
@@ -18,22 +18,85 @@
     animation: breathe 4.5s ease-in-out infinite;
   }
   #tip {
-    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
-    color: rgba(210, 230, 255, .42); white-space: nowrap;
-    font: 13px/1.6 "Segoe UI", "Microsoft YaHei", -apple-system, sans-serif;
-    letter-spacing: .18em; user-select: none; pointer-events: none;
+    position: fixed; left: 50%; bottom: 86px; transform: translateX(-50%);
+    color: rgba(210, 230, 255, .40); white-space: nowrap;
+    font: 12.5px/1.6 "Segoe UI", "Microsoft YaHei", -apple-system, sans-serif;
+    letter-spacing: .14em; user-select: none; pointer-events: none;
   }
   @keyframes breathe { 0%, 100% { opacity: .68; } 50% { opacity: 1; } }
-  @media (max-width: 640px) {
-    #title { font-size: 16px; letter-spacing: .22em; }
-    #tip { font-size: 11px; }
+
+  /* ---- 右下角模式按钮 ---- */
+  #tools {
+    position: fixed; right: 20px; bottom: 20px;
+    display: flex; gap: 10px; align-items: center; z-index: 10;
+  }
+  .tool-btn {
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 1px solid rgba(140, 200, 255, .26);
+    background: rgba(12, 22, 40, .70);
+    color: rgba(200, 225, 255, .82);
+    font-size: 18px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    transition: border-color .2s, box-shadow .2s, background .2s;
+  }
+  .tool-btn:hover { border-color: rgba(140, 200, 255, .55); background: rgba(20, 36, 64, .88); }
+  .tool-btn.active {
+    border-color: #6fd3ff; color: #d3f1ff;
+    box-shadow: 0 0 16px rgba(90, 190, 255, .5), inset 0 0 12px rgba(90, 190, 255, .18);
+  }
+
+  /* ---- 底部祝福输入 ---- */
+  #bless-bar {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 10;
+  }
+  #bless-input {
+    width: 236px; padding: 10px 16px; border-radius: 22px;
+    border: 1px solid rgba(140, 200, 255, .24);
+    background: rgba(12, 22, 40, .78);
+    color: #eaf4ff; font-size: 13px; outline: none;
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    letter-spacing: .05em;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    transition: border-color .2s;
+  }
+  #bless-input::placeholder { color: rgba(180, 210, 240, .32); }
+  #bless-input:focus { border-color: rgba(140, 200, 255, .62); }
+  #bless-go {
+    padding: 0 18px; border-radius: 22px; cursor: pointer;
+    border: 1px solid rgba(140, 200, 255, .28);
+    background: rgba(20, 40, 72, .85); color: #cbeeff;
+    font-size: 13px; font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    transition: background .2s;
+  }
+  #bless-go:hover { background: rgba(32, 62, 108, .95); }
+
+  @media (max-width: 680px) {
+    #title { font-size: 15px; letter-spacing: .2em; top: 5%; }
+    #tip { font-size: 11px; bottom: 80px; letter-spacing: .06em; }
+    #bless-input { width: 150px; font-size: 12px; }
+    #bless-go { padding: 0 13px; font-size: 12px; }
+    .tool-btn { width: 40px; height: 40px; font-size: 16px; }
+    #tools { right: 12px; bottom: 12px; }
   }
 </style>
 </head>
 <body>
 <canvas id="scene"></canvas>
 <div id="title">MERRY CHRISTMAS</div>
-<div id="tip">拖动旋转 · 滚轮缩放</div>
+<div id="tip">点击树 → 爆烟花 · 拖动旋转 · 滚轮缩放</div>
+
+<div id="tools">
+  <button class="tool-btn active" id="btn-spark" title="烟花模式：点击爆开粒子">✦</button>
+  <button class="tool-btn" id="btn-deco" title="装饰模式：点击挂一颗彩球">◍</button>
+  <button class="tool-btn" id="btn-clear" title="清空所有彩球">⟲</button>
+</div>
+
+<div id="bless-bar">
+  <input id="bless-input" maxlength="18" placeholder="写一句话，挂到树顶上…" />
+  <button id="bless-go">挂上去</button>
+</div>
 
 <script src="./three.min.js"></script>
 <script>
@@ -42,7 +105,7 @@
 
   var canvas = document.getElementById('scene');
 
-  /* ---------- 基础场景 ---------- */
+  /* ==================== 基础场景 ==================== */
   var scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x04060d, 0.0145);
 
@@ -53,7 +116,7 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(0x04060d, 1);
 
-  /* ---------- 柔和光点贴图：让粒子是圆的、带光晕，而不是方块 ---------- */
+  /* ==================== 光点贴图 ==================== */
   function makeGlowTexture(inner) {
     var size = 128;
     var cv = document.createElement('canvas');
@@ -71,36 +134,36 @@
   var dotTex = makeGlowTexture(0.18);
   var softTex = makeGlowTexture(0.05);
 
-  /* ---------- 树的参数 ---------- */
-  var TREE_H = 18;      // 树高
-  var TREE_R = 6.2;     // 底部半径
-  var TURNS = 11;       // 螺旋圈数
-  var COUNT = 16000;    // 树身粒子数
+  /* ==================== 树的参数 ==================== */
+  var TREE_H = 18;
+  var TREE_R = 6.2;
+  var TURNS = 11;
+  var COUNT = 16000;
 
   var treeGroup = new THREE.Group();
   scene.add(treeGroup);
 
-  var cBase = new THREE.Color(0x0a4d24);   // 底部深绿
-  var cMid = new THREE.Color(0x1f9e4a);    // 中部翠绿
-  var cTop = new THREE.Color(0x8cf7b4);    // 顶部亮绿
+  function radiusAt(t) { return TREE_R * Math.pow(1 - t, 1.06); }
+
+  var cBase = new THREE.Color(0x0a4d24);
+  var cMid = new THREE.Color(0x1f9e4a);
+  var cTop = new THREE.Color(0x8cf7b4);
 
   var positions = [];
   var colors = [];
   var tmpColor = new THREE.Color();
 
   for (var i = 0; i < COUNT; i++) {
-    var t = i / COUNT;                                    // 0 → 底部，1 → 顶部
-    var jitter = (Math.random() - 0.5) * (2.2 / COUNT);   // 轻微错位，避免死板的线
+    var t = i / COUNT;
+    var jitter = (Math.random() - 0.5) * (2.2 / COUNT);
     var tt = Math.min(1, Math.max(0, t + jitter));
 
     var y = tt * TREE_H;
-    var maxR = TREE_R * Math.pow(1 - tt, 1.06);           // 半径随高度收缩成圆锥
-    var r = maxR * (0.62 + Math.random() * 0.38);         // 不在中轴上，显得蓬松
+    var r = radiusAt(tt) * (0.62 + Math.random() * 0.38);
     var a = tt * TURNS * Math.PI * 2 + (Math.random() - 0.5) * 0.22;
 
     positions.push(Math.cos(a) * r, y, Math.sin(a) * r);
 
-    // 颜色：底→中→顶 三段插值，再加一点随机明暗
     if (tt < 0.5) {
       tmpColor.copy(cBase).lerp(cMid, tt * 2);
     } else {
@@ -128,7 +191,7 @@
   var treePoints = new THREE.Points(treeGeo, treeMat);
   treeGroup.add(treePoints);
 
-  /* ---------- 彩灯：五组不同颜色，各自呼吸闪烁 ---------- */
+  /* ==================== 彩灯 ==================== */
   var bulbPalette = [0xff4d5a, 0xffd93d, 0x4fc3f7, 0xff9a3d, 0xc56bff];
   var bulbGroups = [];
 
@@ -137,8 +200,7 @@
     var bp = [];
     for (var j = 0; j < n; j++) {
       var t = 0.03 + Math.random() * 0.9;
-      var maxR = TREE_R * Math.pow(1 - t, 1.06);
-      var r = maxR * (0.85 + Math.random() * 0.2);   // 贴在树表面
+      var r = radiusAt(t) * (0.85 + Math.random() * 0.2);
       var a = t * TURNS * Math.PI * 2 + (Math.random() - 0.5) * 1.2;
       bp.push(Math.cos(a) * r, t * TREE_H, Math.sin(a) * r);
     }
@@ -156,17 +218,16 @@
       sizeAttenuation: true
     });
     var pts = new THREE.Points(g, m);
-    pts.userData.phase = gi * 1.26;   // 每组错开相位
+    pts.userData.phase = gi * 1.26;
     treeGroup.add(pts);
     bulbGroups.push(pts);
   });
 
-  /* ---------- 树顶星星 ---------- */
+  /* ==================== 树顶星星 ==================== */
   var starCanvas = document.createElement('canvas');
   starCanvas.width = starCanvas.height = 256;
-  (function drawStar(ctx) {
+  (function (ctx) {
     var s = 256, cx = 128, cy = 128;
-    // 外圈光晕
     var halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, cx);
     halo.addColorStop(0, 'rgba(255,252,220,1)');
     halo.addColorStop(0.12, 'rgba(255,236,140,0.85)');
@@ -175,7 +236,6 @@
     ctx.fillStyle = halo;
     ctx.fillRect(0, 0, s, s);
 
-    // 星形
     ctx.translate(cx, cy);
     ctx.beginPath();
     var spikes = 5, outer = 54, inner = 22;
@@ -189,9 +249,8 @@
     ctx.fill();
   })(starCanvas.getContext('2d'));
 
-  var starTex = new THREE.CanvasTexture(starCanvas);
   var starMat = new THREE.SpriteMaterial({
-    map: starTex,
+    map: new THREE.CanvasTexture(starCanvas),
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending
@@ -201,7 +260,7 @@
   star.scale.set(5.2, 5.2, 1);
   treeGroup.add(star);
 
-  /* ---------- 地面光晕 ---------- */
+  /* ==================== 地面光晕 ==================== */
   var floorCanvas = document.createElement('canvas');
   floorCanvas.width = floorCanvas.height = 256;
   (function (ctx) {
@@ -226,7 +285,7 @@
   floor.position.y = -0.05;
   scene.add(floor);
 
-  /* ---------- 雪花 ---------- */
+  /* ==================== 雪花 ==================== */
   var SNOW = 1400;
   var snowPos = new Float32Array(SNOW * 3);
   var snowVel = new Float32Array(SNOW);
@@ -251,26 +310,273 @@
   var snow = new THREE.Points(snowGeo, snowMat);
   scene.add(snow);
 
-  /* ---------- 交互：球坐标控制相机 ---------- */
-  var rotY = 0.6;          // 水平角
-  var rotX = 0.12;         // 俯仰角
-  var camDist = 28;        // 距离
+  /* ==================== 烟花粒子池 ==================== */
+  var MAXP = 2400;
+  var pPos  = new Float32Array(MAXP * 3);
+  var pCol  = new Float32Array(MAXP * 3);
+  var pVel  = new Float32Array(MAXP * 3);
+  var pBase = new Float32Array(MAXP * 3);
+  var pLife = new Float32Array(MAXP);
+  var pMax  = new Float32Array(MAXP);
+  var pCursor = 0;
+
+  for (var pi = 0; pi < MAXP; pi++) { pPos[pi * 3 + 1] = -9999; }
+
+  var pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+  pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+
+  var sparks = new THREE.Points(pGeo, new THREE.PointsMaterial({
+    size: 0.44,
+    map: softTex,
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true
+  }));
+  sparks.frustumCulled = false;
+  scene.add(sparks);
+
+  var burstPalette = [0xff5a6e, 0xffd93d, 0x4fc3f7, 0xb388ff, 0xff9a3d, 0x7dffb0, 0xffffff];
+
+  function burst(pos, n, forcedColor) {
+    n = n || 90;
+    var base = new THREE.Color(
+      forcedColor !== undefined ? forcedColor
+                                : burstPalette[(Math.random() * burstPalette.length) | 0]
+    );
+
+    for (var i = 0; i < n; i++) {
+      var idx = pCursor;
+      pCursor = (pCursor + 1) % MAXP;
+      var i3 = idx * 3;
+
+      pPos[i3]     = pos.x;
+      pPos[i3 + 1] = pos.y;
+      pPos[i3 + 2] = pos.z;
+
+      // 球面上均匀取方向，避免两极扎堆
+      var u = Math.random() * 2 - 1;
+      var th = Math.random() * Math.PI * 2;
+      var sq = Math.sqrt(1 - u * u);
+      var speed = 2.4 + Math.random() * 5.0;
+
+      pVel[i3]     = sq * Math.cos(th) * speed;
+      pVel[i3 + 1] = u * speed + 1.3;
+      pVel[i3 + 2] = sq * Math.sin(th) * speed;
+
+      var life = 0.85 + Math.random() * 1.15;
+      pLife[idx] = life;
+      pMax[idx] = life;
+
+      var c = base.clone();
+      c.offsetHSL((Math.random() - 0.5) * 0.07, 0, (Math.random() - 0.5) * 0.25);
+      pBase[i3] = c.r; pBase[i3 + 1] = c.g; pBase[i3 + 2] = c.b;
+      pCol[i3]  = c.r; pCol[i3 + 1]  = c.g; pCol[i3 + 2]  = c.b;
+    }
+    pGeo.attributes.position.needsUpdate = true;
+    pGeo.attributes.color.needsUpdate = true;
+  }
+
+  function updateSparks(dt) {
+    var dirty = false;
+    for (var i = 0; i < MAXP; i++) {
+      if (pLife[i] <= 0) continue;
+      var i3 = i * 3;
+
+      pLife[i] -= dt;
+      if (pLife[i] <= 0) {
+        pPos[i3 + 1] = -9999;
+        dirty = true;
+        continue;
+      }
+
+      pVel[i3 + 1] -= 5.4 * dt;     // 重力
+      pVel[i3]     *= 0.986;        // 空气阻尼
+      pVel[i3 + 2] *= 0.986;
+
+      pPos[i3]     += pVel[i3] * dt;
+      pPos[i3 + 1] += pVel[i3 + 1] * dt;
+      pPos[i3 + 2] += pVel[i3 + 2] * dt;
+
+      // 加性混合下，颜色乘系数就等于淡出
+      var f = pLife[i] / pMax[i];
+      var fade = f * f;
+      pCol[i3]     = pBase[i3] * fade;
+      pCol[i3 + 1] = pBase[i3 + 1] * fade;
+      pCol[i3 + 2] = pBase[i3 + 2] * fade;
+
+      dirty = true;
+    }
+    if (dirty) {
+      pGeo.attributes.position.needsUpdate = true;
+      pGeo.attributes.color.needsUpdate = true;
+    }
+  }
+
+  /* ==================== 装饰球（可保存） ==================== */
+  var DECO_KEY = 'xmas_deco_v1';
+  var DECO_MAX = 140;
+  var decoColors = [0xff4d5a, 0xffd93d, 0x4fc3f7, 0xff9a3d, 0xc56bff, 0x7dffb0];
+  var decorations = [];
+  var decoGroup = new THREE.Group();
+  treeGroup.add(decoGroup);
+  var decoTexCache = {};
+
+  function decoTexOf(hex) {
+    if (decoTexCache[hex]) return decoTexCache[hex];
+    var size = 128;
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    var ctx = cv.getContext('2d');
+    var c = new THREE.Color(hex);
+    var rgb = Math.round(c.r * 255) + ',' + Math.round(c.g * 255) + ',' + Math.round(c.b * 255);
+    var g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.16, 'rgba(' + rgb + ',1)');
+    g.addColorStop(0.42, 'rgba(' + rgb + ',0.42)');
+    g.addColorStop(1, 'rgba(' + rgb + ',0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+    var tex = new THREE.CanvasTexture(cv);
+    decoTexCache[hex] = tex;
+    return tex;
+  }
+
+  function saveDeco() {
+    try { localStorage.setItem(DECO_KEY, JSON.stringify(decorations)); } catch (e) {}
+  }
+
+  function addDeco(x, y, z, hex, silent) {
+    if (!silent && decorations.length >= DECO_MAX) return null;
+
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: decoTexOf(hex),
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    }));
+    sp.position.set(x, y, z);
+    sp.scale.set(0.9, 0.9, 1);
+    sp.userData.base = 0.9;
+    sp.userData.phase = Math.random() * Math.PI * 2;
+    decoGroup.add(sp);
+
+    if (!silent) {
+      decorations.push({ x: x, y: y, z: z, c: hex });
+      saveDeco();
+    }
+    return sp;
+  }
+
+  function clearDeco() {
+    while (decoGroup.children.length > 0) {
+      decoGroup.remove(decoGroup.children[0]);
+    }
+    decorations.length = 0;
+    saveDeco();
+  }
+
+  (function loadDeco() {
+    try {
+      var raw = localStorage.getItem(DECO_KEY);
+      if (!raw) return;
+      var arr = JSON.parse(raw);
+      if (!arr || !arr.length) return;
+      for (var i = 0; i < arr.length; i++) {
+        var d = arr[i];
+        addDeco(d.x, d.y, d.z, d.c, true);
+        decorations.push(d);
+      }
+    } catch (e) {}
+  })();
+
+  /* ==================== 文字祝福 ==================== */
+  var BLESS_KEY = 'xmas_bless_v1';
+  var blessSprite = null;
+
+  function makeTextSprite(text) {
+    var fs = 64, pad = 46;
+    var probe = document.createElement('canvas').getContext('2d');
+    var font = '600 ' + fs + 'px "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif';
+    probe.font = font;
+    var w = Math.ceil(probe.measureText(text).width) + pad * 2;
+    var h = fs + pad * 2;
+
+    var cv = document.createElement('canvas');
+    cv.width = w;
+    cv.height = h;
+    var ctx = cv.getContext('2d');
+    ctx.font = font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.shadowColor = 'rgba(120, 220, 255, 0.95)';
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(text, w / 2, h / 2);
+    ctx.shadowBlur = 14;
+    ctx.fillText(text, w / 2, h / 2);
+    ctx.shadowBlur = 0;
+    ctx.fillText(text, w / 2, h / 2);
+
+    var tex = new THREE.CanvasTexture(cv);
+    tex.minFilter = THREE.LinearFilter;
+
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    }));
+
+    // 太长的话整体缩一缩，保证不超出画面
+    var scale = Math.min(0.020, 24 / w);
+    sp.scale.set(w * scale, h * scale, 1);
+    return sp;
+  }
+
+  function setBlessing(text) {
+    if (blessSprite) {
+      scene.remove(blessSprite);
+      blessSprite = null;
+    }
+    if (!text) {
+      try { localStorage.removeItem(BLESS_KEY); } catch (e) {}
+      return;
+    }
+    blessSprite = makeTextSprite(text);
+    blessSprite.position.set(0, TREE_H + 4.6, 0);
+    scene.add(blessSprite);
+    try { localStorage.setItem(BLESS_KEY, text); } catch (e) {}
+  }
+
+  /* ==================== 相机控制 ==================== */
+  var rotY = 0.6;
+  var rotX = 0.12;
+  var camDist = 28;
   var targetRotY = rotY;
-  var autoSpin = true;
+  var autoSpin = true;        // 自动旋转（用户会看到这个效果）
 
   var dragging = false;
   var lastX = 0, lastY = 0;
+  var downX = 0, downY = 0, downT = 0;
 
   canvas.addEventListener('pointerdown', function (e) {
     dragging = true;
     autoSpin = false;
-    lastX = e.clientX;
-    lastY = e.clientY;
+    lastX = downX = e.clientX;
+    lastY = downY = e.clientY;
+    downT = Date.now();
     canvas.setPointerCapture(e.pointerId);
   });
 
   canvas.addEventListener('pointermove', function (e) {
+    mouseNX = (e.clientX / window.innerWidth) * 2 - 1;
+    mouseNY = (e.clientY / window.innerHeight) * 2 - 1;
     if (!dragging) return;
+
     targetRotY -= (e.clientX - lastX) * 0.006;
     rotX += (e.clientY - lastY) * 0.004;
     rotX = Math.max(-0.35, Math.min(0.85, rotX));
@@ -282,6 +588,12 @@
     dragging = false;
     try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
     setTimeout(function () { autoSpin = true; }, 2200);
+
+    // 位移小于 8px 且时间短 —— 判定为"点击"而不是"拖动"
+    var moved = Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY);
+    if (moved < 8 && Date.now() - downT < 400) {
+      handleClick(e.clientX, e.clientY);
+    }
   });
 
   canvas.addEventListener('wheel', function (e) {
@@ -296,14 +608,93 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  /* ---------- 动画循环 ---------- */
+  /* ==================== 鼠标带动树身摆动 ==================== */
+  var mouseNX = 0, mouseNY = 0;
+  var swayX = 0, swayY = 0;
+
+  /* ==================== 点击处理 ==================== */
+  var mode = 'spark';
+  var raycaster = new THREE.Raycaster();
+  raycaster.params.Points.threshold = 1.15;
+  var ndc = new THREE.Vector2();
+
+  function handleClick(cx, cy) {
+    ndc.x = (cx / window.innerWidth) * 2 - 1;
+    ndc.y = -(cy / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(ndc, camera);
+
+    var hit = raycaster.intersectObject(treePoints, false);
+
+    if (mode === 'deco') {
+      if (hit.length === 0) return;                       // 必须点在树上
+      var world = hit[0].point.clone();
+      // 转成树的局部坐标，否则树一摆动彩球就漂走
+      var local = treeGroup.worldToLocal(world.clone());
+      var hex = decoColors[(Math.random() * decoColors.length) | 0];
+      if (addDeco(local.x, local.y, local.z, hex, false)) {
+        burst(world, 22, hex);
+      }
+      return;
+    }
+
+    // 烟花模式：命中树就在命中点爆，没命中就在空中爆
+    var pos = hit.length > 0
+      ? hit[0].point.clone()
+      : raycaster.ray.at(camDist * 0.82, new THREE.Vector3());
+    burst(pos, 95);
+  }
+
+  /* ==================== 模式按钮 ==================== */
+  var btnSpark = document.getElementById('btn-spark');
+  var btnDeco = document.getElementById('btn-deco');
+  var tipEl = document.getElementById('tip');
+
+  function setMode(m) {
+    mode = m;
+    btnSpark.classList.toggle('active', m === 'spark');
+    btnDeco.classList.toggle('active', m === 'deco');
+    tipEl.textContent = m === 'spark'
+      ? '点击树 → 爆烟花 · 拖动旋转 · 滚轮缩放'
+      : '点击树 → 挂彩球 · 拖动旋转 · 滚轮缩放';
+  }
+  btnSpark.onclick = function () { setMode('spark'); };
+  btnDeco.onclick = function () { setMode('deco'); };
+
+  document.getElementById('btn-clear').onclick = function () {
+    clearDeco();
+    setMode('spark');
+  };
+
+  /* ==================== 祝福输入 ==================== */
+  var blessInput = document.getElementById('bless-input');
+  document.getElementById('bless-go').onclick = function () {
+    setBlessing(blessInput.value.trim());
+  };
+  blessInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') setBlessing(blessInput.value.trim());
+  });
+
+  (function loadBless() {
+    try {
+      var saved = localStorage.getItem(BLESS_KEY);
+      if (saved) {
+        blessInput.value = saved;
+        setBlessing(saved);
+      }
+    } catch (e) {}
+  })();
+
+  /* ==================== 动画循环 ==================== */
   var clock = new THREE.Clock();
   var lookAt = new THREE.Vector3(0, TREE_H * 0.5, 0);
+  var lastT = 0;
 
   function animate() {
     requestAnimationFrame(animate);
 
     var time = clock.getElapsedTime();
+    var dt = Math.min(time - lastT, 0.05);   // 切走标签页回来时不要一次跳太远
+    lastT = time;
 
     if (autoSpin && !dragging) targetRotY += 0.0016;
     rotY += (targetRotY - rotY) * 0.08;
@@ -316,6 +707,12 @@
     );
     camera.lookAt(lookAt);
 
+    // 鼠标带动树身轻轻摆动
+    swayX += (mouseNX * 0.055 - swayX) * 0.055;
+    swayY += (mouseNY * 0.032 - swayY) * 0.055;
+    treeGroup.rotation.z = -swayX;
+    treeGroup.rotation.x = swayY;
+
     // 彩灯呼吸
     for (var i = 0; i < bulbGroups.length; i++) {
       var b = bulbGroups[i];
@@ -325,19 +722,35 @@
       b.scale.set(sc, sc, sc);
     }
 
-    // 星星脉动
+    // 树顶星星
     var sp = 1 + Math.sin(time * 1.9) * 0.075;
     star.scale.set(5.2 * sp, 5.2 * sp, 1);
-    star.material.rotation = time * 0.16;
+    starMat.rotation = time * 0.16;
 
-    // 树身整体轻微呼吸感
+    // 树身呼吸
     treeMat.opacity = 0.9 + Math.sin(time * 1.1) * 0.05;
 
-    // 雪花下落
+    // 手挂的彩球，各自闪
+    for (var d = 0; d < decoGroup.children.length; d++) {
+      var ds = decoGroup.children[d];
+      var dpl = 0.72 + 0.28 * Math.sin(time * 2.6 + ds.userData.phase);
+      var dsc = ds.userData.base * dpl;
+      ds.scale.set(dsc, dsc, 1);
+    }
+
+    // 祝福文字轻微浮动
+    if (blessSprite) {
+      blessSprite.position.y = TREE_H + 4.6 + Math.sin(time * 1.2) * 0.22;
+    }
+
+    // 烟花
+    updateSparks(dt);
+
+    // 雪花
     var arr = snowGeo.attributes.position.array;
     for (var k = 0; k < SNOW; k++) {
       arr[k * 3 + 1] -= snowVel[k];
-      arr[k * 3] += Math.sin(time * 0.7 + k) * 0.0035;   // 微微飘动
+      arr[k * 3] += Math.sin(time * 0.7 + k) * 0.0035;
       if (arr[k * 3 + 1] < -0.5) {
         arr[k * 3 + 1] = 46;
         arr[k * 3] = (Math.random() - 0.5) * 56;
